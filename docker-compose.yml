@@ -1,0 +1,80 @@
+version: '3.9'
+
+services:
+  # ── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - pricing
+      - orders
+      - payment
+    environment:
+      - REACT_APP_PRICING_URL=http://localhost:8001
+      - REACT_APP_ORDERS_URL=http://localhost:8002
+      - REACT_APP_PAYMENT_URL=http://localhost:8003
+    networks:
+      - apex-net
+
+  # ── Microservice 1: Pricing & Configuration Engine ────────────────────────
+  pricing:
+    build:
+      context: ./services/pricing
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - pricing-data:/data
+    networks:
+      - apex-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Microservice 2: Cart & Order Management ───────────────────────────────
+  orders:
+    build:
+      context: ./services/orders
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - orders-data:/data
+    networks:
+      - apex-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Microservice 3: Mock Payment Gateway ─────────────────────────────────
+  payment:
+    build:
+      context: ./services/payment
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    volumes:
+      - payment-data:/data
+    networks:
+      - apex-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pricing-data:
+  orders-data:
+  payment-data:
+
+networks:
+  apex-net:
+    driver: bridge
